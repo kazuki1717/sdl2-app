@@ -1,4 +1,5 @@
 # sdl2-app
+
 a sdl2 rapper for making sdl2 application easier
 
 ## sample
@@ -11,10 +12,10 @@ public:
     // == resources ==
     // resources will be loaded lazily when first used
 
-    sdl_font_t font_rog_regular{"ROGFonts-Regular.otf", 48};
+    sdl_font_t font{"PixelMplus10-Regular.ttf", 48};
 
     sdl_texture_t texture_titi{"titi.png"};
-    sdl_texture_t texture_hello_world{font_rog_regular, "hello world", SDLAPP_TEXT_BLENDED, SDLAPP_COLOR_YELLOW, SDLAPP_COLOR_BLACK, 0};
+    sdl_texture_t texture_hello_world{font, "hello world", SDLAPP_TEXT_BLENDED, SDLAPP_COLOR_YELLOW, SDLAPP_COLOR_BLACK, 0};
 
 
     // override method 
