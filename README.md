@@ -10,7 +10,6 @@ class hello_world_t : public sdl_app_t {
 public:
     // == resources ==
     // resources will be loaded lazily when first used
-    // we can use them after on_setup(), like on_prepare()
 
     sdl_font_t font_rog_regular{"ROGFonts-Regular.otf", 48};
 
