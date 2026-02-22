@@ -153,8 +153,6 @@ protected:
 
     virtual void on_setup() {
         init_all();
-        disable_update();
-        enable_lazy_draw();
     }
 
     virtual void on_event(SDL_Event& e) {
