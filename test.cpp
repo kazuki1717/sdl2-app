@@ -1,3 +1,5 @@
+// clang++ test.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
+
 #include "sdl2-app.hpp"
 
 class hello_world_t : public sdl_app_t {
