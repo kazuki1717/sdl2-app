@@ -296,13 +296,6 @@ protected:
 
 
 
-    int render_set_draw_color(SDL_Color color) {
-        return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    }
-
-    int render_set_draw_color(uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, uint8_t a = 255) {
-        return SDL_SetRenderDrawColor(renderer, r, g, b, a);
-    }
 
     int render_clear() {
         return SDL_RenderClear(renderer);
@@ -316,6 +309,22 @@ protected:
 
 
 
+
+    int set_render_draw_color(SDL_Color color) {
+        return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    }
+
+    int set_render_draw_color(uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, uint8_t a = 255) {
+        return SDL_SetRenderDrawColor(renderer, r, g, b, a);
+    }
+
+    void set_update_delay(uint32_t delay) {
+        update_delay = delay;
+    }
+
+    void set_render_delay(uint32_t delay) {
+        render_delay = delay;
+    }
 
     void set_window_title(const std::string& title) {
         SDL_SetWindowTitle(window, title.c_str());
@@ -521,7 +530,7 @@ public:
         *(int*)(ptr + 1) = ptsize;
     }
 
-    sdl_font_t(TTF_Font* font) : sdl_resource_t((void*)font, sizeof(int)) {}
+    sdl_font_t(TTF_Font* font = nullptr) : sdl_resource_t((void*)font, sizeof(int)) {}
 
 
     // == copy ==
@@ -635,8 +644,8 @@ public:
 
     // == init ==
 
-    sdl_surface_t(const std::string& file = "") : sdl_resource_t(file, sizeof(SDL_Point)) {}
-    sdl_surface_t(SDL_Texture* texture) : sdl_resource_t((void*)texture, sizeof(SDL_Point)) {}
+    sdl_surface_t(const std::string& file) : sdl_resource_t(file, sizeof(SDL_Point)) {}
+    sdl_surface_t(SDL_Surface* surface = nullptr) : sdl_resource_t((void*)surface, sizeof(SDL_Point)) {}
 
     sdl_surface_t(sdl_font_t font, const std::string& text, sdl_render_text_mode_t mode, SDL_Color fg = SDLAPP_COLOR_WHITE, SDL_Color bg = SDLAPP_COLOR_BLACK, uint32_t warp_length = 0)
         : sdl_resource_t(text, sizeof(back_t)) {
@@ -771,8 +780,8 @@ public:
 
     // == init ==
 
-    sdl_texture_t(const std::string& file = "") : sdl_resource_t(file, sizeof(SDL_Point)) {}
-    sdl_texture_t(SDL_Texture* texture) : sdl_resource_t((void*)texture, sizeof(SDL_Point)) {}
+    sdl_texture_t(const std::string& file) : sdl_resource_t(file, sizeof(SDL_Point)) {}
+    sdl_texture_t(SDL_Texture* texture = nullptr) : sdl_resource_t((void*)texture, sizeof(SDL_Point)) {}
 
     sdl_texture_t(const sdl_surface_t& surface) : sdl_resource_t(nullptr, sizeof(surface_back_t)) {
         ptr->load_method = 1;
@@ -860,7 +869,7 @@ public:
     // == init ==
 
     sdl_music_t(const std::string& file) : sdl_resource_t(file, 0) {}
-    sdl_music_t(Mix_Music* music) : sdl_resource_t((void*)music, 0) {}
+    sdl_music_t(Mix_Music* music = nullptr) : sdl_resource_t((void*)music, 0) {}
 
 
     // == copy ==

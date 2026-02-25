@@ -1,10 +1,3 @@
-# sdl2-app
-
-a sdl2 rapper for making sdl2 application easier
-
-## sample
-
-```cpp
 // clang++ test.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
 
 #include "sdl2-app.hpp"
@@ -30,7 +23,7 @@ public:
 
     // empty texture resource.
     sdl_texture_t texture_unloaded;
-  
+    
 
     // music resource load from file.
     sdl_music_t music_the_world{"the-world!!!.mp3"};
@@ -86,7 +79,7 @@ public:
     // if you don't have update process, just put disable_update() to on_setup().
     // you can control update frequency by set_update_delay(1000 / fps)
     void on_update(uint32_t tick) {
-      
+        
     }
 
     // callback when rendering window.
@@ -118,4 +111,3 @@ int main(int argc, char** argv) {
     app.run();
     return 0;
 }
-```
