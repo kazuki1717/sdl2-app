@@ -1,4 +1,4 @@
-// clang++ test.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
+// clang++ sample.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
 
 #include "sdl2-app.hpp"
 
@@ -45,7 +45,7 @@ public:
         init_window_renderer();
 
         disable_update();
-        enable_lazy_draw();
+        // enable_lazy_draw();
     }
 
     // callback when getting event.

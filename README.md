@@ -5,7 +5,7 @@ a sdl2 rapper for making sdl2 application easier
 ## sample
 
 ```cpp
-// clang++ test.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
+// clang++ sample.cpp -lsdl2 -lsdl2_ttf -lsdl2_image -lsdl2_mixer
 
 #include "sdl2-app.hpp"
 
@@ -86,7 +86,7 @@ public:
     // if you don't have update process, just put disable_update() to on_setup().
     // you can control update frequency by set_update_delay(1000 / fps)
     void on_update(uint32_t tick) {
-      
+  
     }
 
     // callback when rendering window.
