@@ -6,7 +6,7 @@ class hello_world_t : public sdl_app_t {
 public:
     // == resources ==
     // resources will be loaded lazily when first used
-    // we can use them after on_setup(), like on_prepare()
+    // we can use them after like init_ttf(), init_renderer()
 
     sdl_font_t font{"PixelMplus10-Regular.ttf", 48};
 
@@ -58,6 +58,8 @@ public:
 
         render_set_draw_color();
         render_clear();
+
+        throw sdl_make_exception("testing");
 
         rect.w = (float)texture_titi.get_width() * (float)window_height / (float)texture_titi.get_height(),
         rect.h = (float)window_height;

@@ -23,9 +23,14 @@
 
 class sdl_exception_t : public std::exception {
     char message[513];
+    const char* file;
+    int line;
 
 public:
-    sdl_exception_t(const char* fmt, ...) {
+    sdl_exception_t(const char* file, int line, const char* fmt, ...) {
+        this->file = file;
+        this->line = line;
+
         va_list args;
         va_start(args, fmt);
         vsnprintf(message, 512, fmt, args);
@@ -37,23 +42,27 @@ public:
     }
 
     void print() const {
-        std::cerr << "sdl_exception: " << message << "\n";
+        fprintf(stderr, "sdl_exception from %s-%d: %s\n", file, line, message);
     }
 };
+
+#define sdl_make_exception(fmt, ...) sdl_exception_t(__FILE__, __LINE__, fmt, __VA_ARGS__)
+
+
 
 
 
 // == colors ==
 
-constexpr SDL_Color SDLAPP_COLOR_WHITE = {255, 255, 255, 255};
-constexpr SDL_Color SDLAPP_COLOR_BLACK = {0, 0, 0, 255};
-constexpr SDL_Color SDLAPP_COLOR_RED = {255, 0, 0, 255};
-constexpr SDL_Color SDLAPP_COLOR_GREEN = {0, 255, 0, 255};
-constexpr SDL_Color SDLAPP_COLOR_BLUE = {0, 0, 255, 255};
+constexpr SDL_Color SDLAPP_COLOR_WHITE{255, 255, 255, 255};
+constexpr SDL_Color SDLAPP_COLOR_BLACK{0, 0, 0, 255};
+constexpr SDL_Color SDLAPP_COLOR_RED{255, 0, 0, 255};
+constexpr SDL_Color SDLAPP_COLOR_GREEN{0, 255, 0, 255};
+constexpr SDL_Color SDLAPP_COLOR_BLUE{0, 0, 255, 255};
 
-constexpr SDL_Color SDLAPP_COLOR_YELLOW = {255, 255, 0, 255};
-constexpr SDL_Color SDLAPP_COLOR_CYAN = {0, 255, 255, 255};
-constexpr SDL_Color SDLAPP_COLOR_MAGENTA = {255, 0, 255, 255};
+constexpr SDL_Color SDLAPP_COLOR_YELLOW{255, 255, 0, 255};
+constexpr SDL_Color SDLAPP_COLOR_CYAN{0, 255, 255, 255};
+constexpr SDL_Color SDLAPP_COLOR_MAGENTA{255, 0, 255, 255};
 
 
 
@@ -194,14 +203,14 @@ protected:
 
     void init_sdl() {
         if (SDL_Init(init_sdl_flags) != 0) {
-            throw sdl_exception_t("failed to init sdl");
+            throw sdl_make_exception("failed to init sdl");
         }
         SDL_LogSetAllPriority(init_log_priority);
     }
 
     void init_ttf() {
         if (TTF_Init() != 0) {
-            throw sdl_exception_t("failed to init ttf");
+            throw sdl_make_exception("failed to init ttf");
         }
     }
 
@@ -213,7 +222,7 @@ protected:
         Mix_Init(init_mixer_flags);
 
         if (Mix_OpenAudio(init_audio_frequency, init_audio_format, init_audio_channels, init_audio_chunk_size) != 0) {
-            throw sdl_exception_t("failed to open audio");
+            throw sdl_make_exception("failed to open audio");
         }
     }
 
@@ -228,7 +237,7 @@ protected:
         );
 
         if (window == nullptr) {
-            throw sdl_exception_t("failed to create window since %s!", SDL_GetError());
+            throw sdl_make_exception("failed to create window since %s!", SDL_GetError());
         }
 
         SDL_GetWindowSize(window, &window_width, &window_height);
@@ -250,7 +259,7 @@ protected:
 
         renderer = SDL_CreateRenderer(window, init_renderer_index, init_renderer_flags);
         if (renderer == nullptr) {
-            throw sdl_exception_t("failed to create renderer since %s!", SDL_GetError());
+            throw sdl_make_exception("failed to create renderer since %s!", SDL_GetError());
         }
     }
 
@@ -329,7 +338,7 @@ protected:
 
     void get_current_display_mode(int display_index, SDL_DisplayMode* dm) {
         if (SDL_GetCurrentDisplayMode(display_index, dm) != 0) {
-			throw sdl_exception_t("failed to get display mode since %s!", SDL_GetError());
+			throw sdl_make_exception("failed to get display mode since %s!", SDL_GetError());
 		}
     }
 
@@ -397,6 +406,9 @@ public:
         }
         catch (sdl_exception_t& e) {
             e.print();
+        }
+        catch (std::exception& e) {
+            std::cerr << "std::exception: " << e.what() << "\n";
         }
     }
 };
@@ -492,7 +504,7 @@ class sdl_font_t : public sdl_resource_t {
 
         ptr->resource = TTF_OpenFont(ptr->file.c_str(), ptsize[0]);
         if (ptr->resource == nullptr) {
-            throw sdl_exception_t("failed to open font '%s' since %s!", ptr->file.c_str(), TTF_GetError());
+            throw sdl_make_exception("failed to open font '%s' since %s!", ptr->file.c_str(), TTF_GetError());
         }
     }
 
@@ -582,7 +594,7 @@ class sdl_surface_t : public sdl_resource_t {
         if (ptr->load_method == 0) {
             ptr->resource = IMG_Load(ptr->file.c_str());
             if (ptr->resource == nullptr) {
-                throw sdl_exception_t("failed to load texture '%s', maybe the file not exist!", ptr->file.c_str());
+                throw sdl_make_exception("failed to load texture '%s', maybe the file not exist!", ptr->file.c_str());
             }
 
             return;
@@ -603,10 +615,10 @@ class sdl_surface_t : public sdl_resource_t {
 
 
             default:
-                throw sdl_exception_t("invalid text render mode %d!", ptr->load_method);
+                throw sdl_make_exception("invalid text render mode %d!", ptr->load_method);
         }
         if (ptr->resource == nullptr) {
-            throw sdl_exception_t("failed to render text '%s'!", ptr->file.c_str());
+            throw sdl_make_exception("failed to render text '%s'!", ptr->file.c_str());
         }
     }
 
@@ -711,14 +723,14 @@ class sdl_texture_t : public sdl_resource_t {
             return;
         }
         if (sdl_app_t::renderer == nullptr) {
-            throw sdl_exception_t("failed to load texture '%s' since renderer still not created!", ptr->file.c_str());
+            throw sdl_make_exception("failed to load texture '%s' since renderer still not created!", ptr->file.c_str());
         }
 
 
         if (ptr->load_method == 0) {
             ptr->resource = IMG_LoadTexture(sdl_app_t::renderer, ptr->file.c_str());
             if (ptr->resource == nullptr) {
-                throw sdl_exception_t("failed to load texture '%s', maybe the file not exist!", ptr->file.c_str());
+                throw sdl_make_exception("failed to load texture '%s', maybe the file not exist!", ptr->file.c_str());
             }
 
             SDL_Point* size = (SDL_Point*)(ptr + 1);
@@ -833,7 +845,7 @@ class sdl_music_t : public sdl_resource_t {
 
         ptr->resource = Mix_LoadMUS(ptr->file.c_str());
         if (ptr->resource == nullptr) {
-            throw sdl_exception_t("failed to load music '%s', maybe the file not exist!", ptr->file.c_str());
+            throw sdl_make_exception("failed to load music '%s', maybe the file not exist!", ptr->file.c_str());
         }
     }
 
@@ -890,7 +902,7 @@ public:
     void play(int loops = 0) const {
         load();
         if (Mix_PlayMusic((Mix_Music*)ptr->resource, loops) != 0) {
-            throw sdl_exception_t("failed to play music '%s'!", ptr->file.c_str());
+            throw sdl_make_exception("failed to play music '%s'!", ptr->file.c_str());
         }
     }
 };
