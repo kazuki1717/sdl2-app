@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 #include <exception>
+#include <vector>
 
 
 
@@ -115,6 +116,8 @@ class sdl_app_t {
 
 
 protected:
+    // == running variables ==
+
     static bool running;
     static SDL_Window* window;
     int window_width = 0;
@@ -130,6 +133,9 @@ protected:
     uint32_t render_delay = 15;
     uint32_t next_render_time = 0;
     bool render_lazy_draw = false;
+
+    std::vector<SDL_Thread*> threads{16};
+    int thread_count = 0;
 
     
     // == init variables ==
@@ -200,6 +206,7 @@ protected:
 
 
 
+    // == init ==
 
     void init_sdl() {
         if (SDL_Init(init_sdl_flags) != 0) {
@@ -282,7 +289,7 @@ protected:
 
 
 
-
+    // == send ==
 
     void send_redraw_signal() {
         if (render_lazy_draw == true) {
@@ -296,6 +303,7 @@ protected:
 
 
 
+    // == render ==
 
     int render_clear() {
         return SDL_RenderClear(renderer);
@@ -309,6 +317,23 @@ protected:
 
 
 
+    // == create ==
+
+    SDL_Thread* create_thread(const char* name, SDL_ThreadFunction func, void* data) {
+        if (thread_count >= threads.max_size()) {
+            threads.resize(thread_count * 2);
+        }
+
+        SDL_Thread* thread = SDL_CreateThread(func, name, data);
+        if (thread == nullptr) {
+            throw sdl_make_exception("failed to create thread since %s", SDL_GetError());
+        }
+
+        return threads[thread_count++] = thread;
+    }
+
+
+    // == set ==
 
     int set_render_draw_color(SDL_Color color) {
         return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -326,13 +351,15 @@ protected:
         render_delay = delay;
     }
 
-    void set_window_title(const std::string& title) {
+    void static set_window_title(const std::string& title) {
         SDL_SetWindowTitle(window, title.c_str());
     }
 
     void set_window_size(int width, int height) {
         SDL_SetWindowSize(window, width, height);
     }
+
+
 
     void disable_update() {
         update_delay = -1;
@@ -345,10 +372,17 @@ protected:
 
 
 
-    void get_current_display_mode(int display_index, SDL_DisplayMode* dm) {
+
+    // == get ==
+
+    inline static void get_current_display_mode(int display_index, SDL_DisplayMode* dm) {
         if (SDL_GetCurrentDisplayMode(display_index, dm) != 0) {
 			throw sdl_make_exception("failed to get display mode since %s!", SDL_GetError());
 		}
+    }
+
+    inline static uint32_t get_ticks() {
+        return SDL_GetTicks();
     }
 
     
@@ -379,7 +413,7 @@ public:
             while (running) {
                 next = MIN(next_update_time, next_render_time);
 
-                while (SDL_WaitEventTimeout(&event, next > (now = SDL_GetTicks()) ? next - now : 0)) {
+                while (SDL_WaitEventTimeout(&event, next > (now = get_ticks()) ? next - now : 0)) {
                     on_event(event);
                     
                     if (next_render_time != -1 || running == false) {
@@ -387,7 +421,7 @@ public:
                     }
                 }
 
-                now = SDL_GetTicks();
+                now = get_ticks();
 
                 // -- handle tick --
                 if (now >= next_update_time) {
@@ -411,7 +445,6 @@ public:
                     next_render_time = now + render_delay;
                 }
             }
-            SDL_Log("app exited normally");
         }
         catch (sdl_exception_t& e) {
             e.print();
@@ -419,6 +452,15 @@ public:
         catch (std::exception& e) {
             std::cerr << "std::exception: " << e.what() << "\n";
         }
+
+        // == wait threads ==
+
+        for (int i = 0; i < thread_count; i++) {
+            SDL_WaitThread(threads[i], nullptr);
+        }
+
+        
+        SDL_Log("app exited normally");
     }
 };
 
@@ -469,22 +511,24 @@ protected:
 
     // == init ==
 
-    sdl_resource_t(const std::string& file, size_t back_size) {
-        ptr = (context_t*)malloc(sizeof(context_t) + back_size);
+    sdl_resource_t(const std::string& file, size_t back_size
+    )
+    : ptr((context_t*)malloc(sizeof(context_t) + back_size)) {
         new (ptr) context_t(file);
     }
 
-    sdl_resource_t(void* resouce, size_t back_size) {
-        ptr = (context_t*)malloc(sizeof(context_t) + back_size);
+    sdl_resource_t(void* resouce, size_t back_size
+    )
+    : ptr((context_t*)malloc(sizeof(context_t) + back_size)) {
         new (ptr) context_t(resouce);
     }
 
     constexpr sdl_resource_t() {}
 
 
-    // == copy ==
+    // == move ==
 
-    void _copy(const sdl_resource_t& other) noexcept {
+    void _move(const sdl_resource_t& other) noexcept {
         ptr = other.ptr;
         ptr->use_count++;
     }
@@ -536,26 +580,20 @@ public:
     // == copy ==
 
     sdl_font_t(const sdl_font_t& other) noexcept {
-        _copy(other);
+        _move(other);
     }
 
     sdl_font_t& operator=(const sdl_font_t& other) {
         _delete((delete_method_t)TTF_CloseFont);
-        _copy(other);
+        _move(other);
         return *this;
     }
 
     // == move ==
 
-    sdl_font_t(sdl_font_t&& other) noexcept {
-        _copy(other);
-    }
+    sdl_font_t(const sdl_font_t&& other) = delete;
 
-    sdl_font_t& operator=(sdl_font_t&& other) {
-        _delete((delete_method_t)TTF_CloseFont);
-        _copy(other);
-        return *this;
-    }
+    sdl_font_t& operator=(const sdl_font_t&& other) = delete;
     
 
 
@@ -589,8 +627,9 @@ class sdl_surface_t : public sdl_resource_t {
         SDL_Color bg;
         uint32_t warp_length;
 
-        back_t(const sdl_font_t& font, const SDL_Color fg, const SDL_Color bg, uint32_t warp_length)
-            : font(font), fg(fg), bg(bg), warp_length(warp_length) {}
+        back_t(const sdl_font_t& font, SDL_Color fg, SDL_Color bg, uint32_t warp_length
+        )
+        : font(font), fg(fg), bg(bg), warp_length(warp_length) {}
     };
 
     void load() const {
@@ -647,8 +686,11 @@ public:
     sdl_surface_t(const std::string& file) : sdl_resource_t(file, sizeof(SDL_Point)) {}
     sdl_surface_t(SDL_Surface* surface = nullptr) : sdl_resource_t((void*)surface, sizeof(SDL_Point)) {}
 
-    sdl_surface_t(sdl_font_t font, const std::string& text, sdl_render_text_mode_t mode, SDL_Color fg = SDLAPP_COLOR_WHITE, SDL_Color bg = SDLAPP_COLOR_BLACK, uint32_t warp_length = 0)
-        : sdl_resource_t(text, sizeof(back_t)) {
+    sdl_surface_t(const sdl_font_t& font, const std::string& text, sdl_render_text_mode_t mode,
+        SDL_Color fg = SDLAPP_COLOR_WHITE, SDL_Color bg = SDLAPP_COLOR_BLACK,
+        uint32_t warp_length = 0
+    )
+    : sdl_resource_t(text, sizeof(back_t)) {
         ptr->load_method = mode;
 
         back_t* back = (back_t*)(ptr + 1);
@@ -659,26 +701,20 @@ public:
     // == copy ==
 
     sdl_surface_t(const sdl_surface_t& other) noexcept {
-        _copy(other);
+        _move(other);
     }
 
     sdl_surface_t& operator=(const sdl_surface_t& other) {
         _delete((delete_method_t)SDL_DestroyTexture);
-        _copy(other);
+        _move(other);
         return *this;
     }
 
     // == move ==
 
-    sdl_surface_t(sdl_surface_t&& other) noexcept {
-        _copy(other);
-    }
+    sdl_surface_t(sdl_surface_t&& other) = delete;
 
-    sdl_surface_t& operator=(sdl_surface_t&& other) {
-        _delete((delete_method_t)SDL_FreeSurface);
-        _copy(other);
-        return *this;
-    }
+    sdl_surface_t& operator=(sdl_surface_t&& other) = delete;
     
 
 
@@ -723,7 +759,7 @@ class sdl_texture_t : public sdl_resource_t {
         SDL_Color bg;
         uint32_t warp_length;
 
-        render_back_t(const sdl_font_t& font, const SDL_Color fg, const SDL_Color bg, uint32_t warp_length)
+        render_back_t(const sdl_font_t& font, SDL_Color fg, SDL_Color bg, uint32_t warp_length)
             : font(font), fg(fg), bg(bg), warp_length(warp_length) {}
     };
 
@@ -802,26 +838,20 @@ public:
     // == copy ==
 
     sdl_texture_t(const sdl_texture_t& other) noexcept {
-        _copy(other);
+        _move(other);
     }
 
     sdl_texture_t& operator=(const sdl_texture_t& other) {
         _delete((delete_method_t)SDL_DestroyTexture);
-        _copy(other);
+        _move(other);
         return *this;
     }
 
     // == move ==
 
-    sdl_texture_t(sdl_texture_t&& other) noexcept {
-        _copy(other);
-    }
+    sdl_texture_t(sdl_texture_t&& other) = delete;
 
-    sdl_texture_t& operator=(sdl_texture_t&& other) {
-        _delete((delete_method_t)SDL_DestroyTexture);
-        _copy(other);
-        return *this;
-    }
+    sdl_texture_t& operator=(sdl_texture_t&& other) = delete;
     
 
 
@@ -875,26 +905,20 @@ public:
     // == copy ==
 
     sdl_music_t(const sdl_music_t& other) noexcept {
-        _copy(other);
+        _move(other);
     }
 
     sdl_music_t& operator=(const sdl_music_t& other) {
         _delete((delete_method_t)Mix_FreeMusic);
-        _copy(other);
+        _move(other);
         return *this;
     }
 
     // == move ==
 
-    sdl_music_t(sdl_music_t&& other) noexcept {
-        _copy(other);
-    }
+    sdl_music_t(sdl_music_t&& other) = delete;
 
-    sdl_music_t& operator=(sdl_music_t&& other) {
-        _delete((delete_method_t)Mix_FreeMusic);
-        _copy(other);
-        return *this;
-    }
+    sdl_music_t& operator=(sdl_music_t&& other) = delete;
     
 
 
